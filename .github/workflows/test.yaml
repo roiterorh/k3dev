@@ -9,6 +9,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Build
+      run: go build 
+
+    # - name: Test
+    #   run: go test -v ./...
+
     - name: Cache Vagrant boxes
       uses: actions/cache@v2
       with:
