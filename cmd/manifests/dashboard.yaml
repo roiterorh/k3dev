@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubernetes-dashboard
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  annotations:
+  name: kubernetes-dashboard
+  namespace: kube-system
+spec:
+  targetNamespace: kubernetes-dashboard
+  repo: https://kubernetes.github.io/dashboard/
+  chart: kubernetes-dashboard
+
+  valuesContent: |-
+    extraArgs:
+      - --enable-skip-login
+      - --enable-insecure-login
+      - --disable-settings-authorizer
+      - --system-banner="Welcome to k8s"
+    ingress:
+      enabled: true
+      paths:
+        - /
+      hosts:
+        - dash.${DOMAIN}
+      tls:
+        - hosts:
+            - dash.${DOMAIN}
+    metricsScraper:
+      enabled: true
+    metrics-server:
+      enabled: true
+      args:
+      - --kubelet-preferred-address-types=InternalIP
+      - --kubelet-insecure-tls
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: kubernetes-dashboard

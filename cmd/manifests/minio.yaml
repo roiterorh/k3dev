@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name:  storage
+
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: minio
+  namespace: kube-system
+spec:
+  targetNamespace: storage
+  repo: https://charts.min.io/
+  chart: minio
+
+  valuesContent: |-
+    mode: standalone
+
+    consoleIngress:
+      enabled: true
+      path: /
+      hosts:
+        - minio.${DOMAIN}
+      tls: 
+      - hosts:
+        - minio.${DOMAIN}
+    ingress:
+      enabled: true
+      path: /
+      hosts:
+        - minio-svc.${DOMAIN}
+      tls: 
+      - hosts:
+          - minio-svc.${DOMAIN}
+    buckets:
+      - name: storage
+        policy: none
+        versioning: false
+        objectlocking: false
+    podAnnotations: 
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9000"
+      prometheus.io/path: /minio/v2/metrics/cluster
+    environment:
+      MINIO_PROMETHEUS_URL: http://prometheus-server.monitoring
+      MINIO_PROMETHEUS_JOB_ID: kubernetes-pods

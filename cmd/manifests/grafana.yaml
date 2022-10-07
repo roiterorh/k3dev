@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name:  monitoring
+
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: grafana
+  namespace: kube-system
+spec:
+  targetNamespace: monitoring
+  repo: https://grafana.github.io/helm-charts
+  chart: grafana
+
+  valuesContent: |-
+    ingress:
+      enabled: true
+      pathType: Prefix
+      hosts:
+        - grafana.${DOMAIN}
+      tls: 
+      - hosts:
+          - grafana.${DOMAIN}
+    datasources: 
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server
+          access: proxy
+          isDefault: true
+    dashboardProviders: 
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+    dashboards: 
+      default:
+        prometheus-stats:
+          gnetId: 2
+          datasource: Prometheus
+        k8s-prom-dash:
+          gnetId: 15661
+          datasource: Prometheus
+        k8s-pod:
+          gnetId: 747
+          datasource: Prometheus
+        k8s-cluster:
+          gnetId: 6417
+          datasource: Prometheus
+        coredns:
+          gnetId: 14981
+          datasource: Prometheus    
+        ingress-controller:
+          gnetId: 9614
+          datasource: Prometheus    
+        go-metrics:
+          gnetId: 10826
+          datasource: Prometheus    
+        prometheus-v2:
+          gnetId: 3662
+          datasource: Prometheus    
+        node-exporter:
+          gnetId: 1860
+          datasource: Prometheus    
+        nodelocaldns:
+          gnetId: 11759
+          datasource: Prometheus   
+        minio:
+          gnetId: 13502
+          revision: 18
+          datasource: Prometheus   
+          
+    grafana.ini:
+      auth.anonymous:
+        enabled: true
+        org_role: Admin
+        org_name: Main Org.
+      auth:
+        disable_login_form: true
+      paths:
+        data: /var/lib/grafana/
+        logs: /var/log/grafana
+        plugins: /var/lib/grafana/plugins
+        provisioning: /etc/grafana/provisioning
+      analytics:
+        check_for_updates: true
+      log:
+        mode: console
+      grafana_net:
+        url: https://grafana.net
