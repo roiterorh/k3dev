@@ -35,7 +35,7 @@ jobs:
     #       ${{ runner.os }}-vagrant-
 
     - name: Run vagrant up
-      run: VAGRANT_IMAGE={{matrix.image}} vagrant up 
+      run: env VAGRANT_IMAGE={{matrix.image}} vagrant up 
 
     - name: run app
       run: vagrant ssh -- -t '/vagrant/k3dev up --domain test.me'
