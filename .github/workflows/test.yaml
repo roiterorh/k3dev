@@ -1,7 +1,7 @@
 name: vagrant-up
 
-on: [pull-request]
-
+on:
+  pull_request:
 
 jobs:
   vagrant-test:
