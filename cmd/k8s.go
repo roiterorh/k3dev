@@ -157,25 +157,11 @@ func healthAPI(kubeconfig string) {
 		"kubeconfig": kubeconfig,
 	})
 
-	var yamlFile []byte
-	var err error
-	retry.Do(
-		func() error {
-			yamlFile, err = ioutil.ReadFile(kubeconfig)
+			yamlFile, err := ioutil.ReadFile(kubeconfig)
 			if err != nil {
-				return err
+				ctx.Fatalf("error reading file",err) 
 			}
-			if len(yamlFile) == 0 {
-				return &RetriableError{
-					Err: err,
-				}
-			}else{
-				ctx.Info(string(yamlFile))
-			}
-
-			return nil
-		},
-	)
+		
 
 	kubeconfigfile := KubeConfigYML{}
 	err = yaml.Unmarshal([]byte(yamlFile), &kubeconfigfile)
@@ -221,6 +207,8 @@ func healthAPI(kubeconfig string) {
 				return &RetriableError{
 					Err: err,
 				}
+			}else{
+				ctx.Debug("API healthy")
 			}
 
 			return nil
@@ -367,3 +355,6 @@ type: kubernetes.io/tls
 	}
 
 }
+
+
+

@@ -11,18 +11,21 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
 	"github.com/docker/docker/api/types/filters"
-
+	"github.com/docker/docker/pkg/archive"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
      "path/filepath"
+	 "github.com/avast/retry-go/v4"
+
 "os"
+// "bytes"
 )
 
 func init() {
 	log.SetHandler(cli.Default)
 	
 }
-func startContainer(client *client.Client, containername string, servername string, networkName string, version string, kubeconfig string) {
+func startContainer(client *client.Client, containerName string, servername string, networkName string, version string, kubeconfig string) {
 
 
 
@@ -31,7 +34,7 @@ func startContainer(client *client.Client, containername string, servername stri
 	imageName := "rancher/k3s:" + version
 
 	ctx := log.WithFields(log.Fields{
-		"container":containername,
+		"container":containerName,
 		"networkName":networkName,
 		"version":version,
 		"kubeconfig":kubeconfig,
@@ -63,13 +66,13 @@ func startContainer(client *client.Client, containername string, servername stri
 
 	var config *container.Config
 	var hostConfig *container.HostConfig
-	if servername == containername {
+	if servername == containerName {
 		config = &container.Config{
 			Image:        imageName,
 			AttachStdout: false,
 			Tty:          false,
-			Hostname:     containername,
-			Domainname:   containername,
+			Hostname:     containerName,
+			Domainname:   containerName,
 			Cmd:          []string{"server", "--disable", "traefik", "--disable", "metrics-server", "--node-label=ingress-ready=true"},
 			ExposedPorts: nat.PortSet{
 				"6443/tcp": struct{}{},
@@ -77,14 +80,14 @@ func startContainer(client *client.Client, containername string, servername stri
 			},
 			Env: []string{
 				"K3S_TOKEN=test",
-				"K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml",
-				"K3S_KUBECONFIG_MODE=666",
+				// "K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml",
+				// "K3S_KUBECONFIG_MODE=666",
 			},
 		}
 		hostConfig = &container.HostConfig{
-			Binds: []string{
-				kubeconfig + ":/output/kubeconfig.yaml",
-			},
+			// Binds: []string{
+			// 	kubeconfig + ":/output/kubeconfig.yaml",
+			// },
 			Tmpfs: map[string]string{
 				"/run":     "",
 				"/var/run": "",
@@ -119,8 +122,8 @@ func startContainer(client *client.Client, containername string, servername stri
 			OpenStdin:    false,
 			Tty:          false,
 			Image:        imageName,
-			Hostname:     containername,
-			Domainname:   containername,
+			Hostname:     containerName,
+			Domainname:   containerName,
 			Env: []string{
 				"K3S_TOKEN=test",
 				"K3S_URL=https://" + servername + ":6443",
@@ -145,28 +148,28 @@ func startContainer(client *client.Client, containername string, servername stri
 			networkName: {},
 		},
 	}
-	ctx.Debug(containername+" create started")
+	ctx.Debug(containerName+" create started")
 	
-	resp, err := client.ContainerCreate(context, config, hostConfig, networkConfig, nil, containername)
+	resp, err := client.ContainerCreate(context, config, hostConfig, networkConfig, nil, containerName)
 	if err != nil {
 		ctx.Fatalf("Can't create container", err)
 
 		}
-	ctx.Debug(containername+" created")
+	ctx.Debug(containerName+" created")
 
 	if err := client.ContainerStart(context, resp.ID, types.ContainerStartOptions{}); err != nil {
 		ctx.Fatalf("Can't start container", err)
 		}
-	ctx.Info(containername+" started")
+	ctx.Info(containerName+" started")
 
 
 }
-func stopAndRemoveContainer(client *client.Client, containername string)  {
+func stopAndRemoveContainer(client *client.Client, containerName string)  {
 	ctx := log.WithFields(log.Fields{
-		"container":containername,
+		"container":containerName,
 	})
 	context := context.Background()
-	if err := client.ContainerStop(context, containername, nil); err != nil {
+	if err := client.ContainerStop(context, containerName, nil); err != nil {
 		ctx.Fatalf("Can't stop container", err)
 
 	}
@@ -174,23 +177,22 @@ func stopAndRemoveContainer(client *client.Client, containername string)  {
 		RemoveVolumes: true,
 		Force:         true,
 	}
-	if err := client.ContainerRemove(context, containername, removeOptions); err != nil {
+	if err := client.ContainerRemove(context, containerName, removeOptions); err != nil {
 		ctx.Fatalf("Can't remove container", err)
 	}
 }
-func listContainers(client *client.Client) []string {
+func listContainers(client *client.Client,containerName string) []types.Container {
 	ctx := log.WithFields(log.Fields{
 	})
 	context := context.Background()
-	containers, err := client.ContainerList(context, types.ContainerListOptions{All: true})
+	filter := filters.NewArgs()
+	filter.Add("name", containerName)
+	containers, err := client.ContainerList(context, types.ContainerListOptions{All: true,Filters: filter})
+	
 	if err!=nil{
 		ctx.Fatalf("Can't list containers", err)
 	}
-	var arr []string
-	for _, container := range containers {
-		arr = append(arr, container.Names[0])
-	}
-	return arr
+	return containers
 }
 func createNetwork(client *client.Client, networkName string) string {
 	ctx := log.WithFields(log.Fields{
@@ -244,38 +246,22 @@ func clusterUp(name string, kubeconfig string, version string) {
 
 	}
 	createNetwork(client,networkName)
-	if Contains(listContainers(client), "/"+server_name) {
+	if len(listContainers(client,server_name)) >0{
 		ctx.Info(server_name + " already exist (use --recreate or k3dev down to remove)")
 	}else{
-		if _, err := os.Stat(kubeconfig); err == nil {
-			ctx.Warn("File exists")
-			removeFile(kubeconfig)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(kubeconfig), os.ModePerm); err != nil {
-			ctx.Fatalf("could not create folder: %v", err)
 	
-		}
-
-		_, err := os.Create(kubeconfig)
-		if err != nil {
-			ctx.Fatalf("%s", err)
-
-		} else {
-			ctx.Debug("Empty file created")
-		}
 
 
 		ctx.Info("Starting server " + server_name)
 
 	startContainer(client, server_name, server_name, networkName, version, kubeconfig)
 
-	if Contains(listContainers(client), "/"+worker_name){
+	if len(listContainers(client, worker_name))>0{
 		stopAndRemoveContainer(client , worker_name)
 	}
 
 	}
-	if Contains(listContainers(client), "/"+worker_name) {
+	if len(listContainers(client, worker_name))>0{
 		ctx.Info(worker_name + " already exist (use --recreate or k3dev down to remove)")
 
 	}else{
@@ -283,4 +269,61 @@ func clusterUp(name string, kubeconfig string, version string) {
 		startContainer(client, worker_name, server_name, networkName, version, kubeconfig)
 
 	}
+	setKubeconfig(client,kubeconfig,server_name)
+
+}
+
+func setKubeconfig(client *client.Client,kubeconfig string,server_name string){
+	ctx := log.WithFields(log.Fields{
+		"kubeconfig": kubeconfig,
+	})
+context:=context.TODO()
+
+srcPath:="/etc/rancher/k3s/k3s.yaml"
+
+if _, err := os.Stat(kubeconfig); err == nil {
+			removeFile(kubeconfig)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(kubeconfig), os.ModePerm); err != nil {
+			ctx.Fatalf("could not create folder: %v", err)
+		}
+
+		_, err := os.Create(kubeconfig)
+		if err != nil {
+			ctx.Fatalf("%s", err)
+
+		}
+
+	server_id:=listContainers(client, server_name)[0].ID
+
+
+	retry.Do(
+		func() error {
+			_, err := client.ContainerStatPath(context, server_id, srcPath)
+			if err != nil {
+				ctx.Debug("waiting for kubeconfig file")
+				return err
+			}
+			return nil
+		},
+	)
+
+
+
+	content, _, err := client.CopyFromContainer(context, server_id, srcPath)
+    if err != nil {
+        ctx.Fatalf("something went wrong", err)
+    }
+	defer content.Close()
+
+	srcInfo := archive.CopyInfo{
+		Path:       srcPath,
+		Exists:     true,
+		IsDir:      false,
+	}
+
+	archive.CopyTo(content, srcInfo, kubeconfig)
+
+
 }

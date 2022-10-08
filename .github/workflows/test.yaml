@@ -1,14 +1,20 @@
 name: vagrant-up
 
-on: [push]
+on: [pull-request]
+
 
 jobs:
-  vagrant-up:
+  vagrant-test:
     runs-on: macos-10.15
+    strategy:
+      matrix:
+        release:
+          - image: bento/ubuntu-20.04
+            goos: ubuntu
+            arch: amd64
 
     steps:
     - uses: actions/checkout@v2
-
 
     - name: Set up Go
       uses: actions/setup-go@v3
@@ -21,16 +27,19 @@ jobs:
     # - name: Test
     #   run: go test -v ./...
 
-    - name: Cache Vagrant boxes
-      uses: actions/cache@v2
-      with:
-        path: ~/.vagrant.d/boxes
-        key: ${{ runner.os }}-vagrant-${{ hashFiles('Vagrantfile') }}
-        restore-keys: |
-          ${{ runner.os }}-vagrant-
+    # - name: Cache Vagrant boxes
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ~/.vagrant.d/boxes
+    #     key: ${{ runner.os }}-vagrant-${{ hashFiles('Vagrantfile') }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-vagrant-
 
     - name: Run vagrant up
-      run: vagrant up
+      run: VAGRANT_IMAGE={{matrix.image}} vagrant up 
 
     - name: run app
-      run: vagrant ssh -- -t '/vagrant/k3dev up'
+      run: vagrant ssh -- -t '/vagrant/k3dev up --domain test.me'
+
+# curl  https://dash.test.me  --cacert .k3dev/certificates/ca.crt  --resolve 192.168.56.10:443:dash.localtest.me 
+
