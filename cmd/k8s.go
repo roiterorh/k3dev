@@ -50,13 +50,12 @@ func serverReady(kubeconfig string) {
 	ctx := log.WithFields(log.Fields{
 		"kubeconfig": kubeconfig,
 	})
-	fmt.Println("waiting for master readiness")
+	ctx.Info("Wait for server readiness")
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		ctx.Fatalf("error: %v", err)
 	}
-	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		ctx.Fatalf("error: %v", err)
@@ -170,6 +169,8 @@ func healthAPI(kubeconfig string) {
 				return &RetriableError{
 					Err: err,
 				}
+			}else{
+				ctx.Info(string(yamlFile))
 			}
 
 			return nil

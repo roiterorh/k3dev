@@ -31,3 +31,6 @@ jobs:
 
     - name: Run vagrant up
       run: vagrant up
+
+    - name: run app
+      run: vagrant ssh -- -t '/vagrant/k3dev up'
