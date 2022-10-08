@@ -10,35 +10,40 @@ jobs:
       matrix:
         include:
           - image: bento/ubuntu-20.04
-            goos: ubuntu
+            goos: linux
             arch: amd64
+          - image: bento/ubuntu-20.04-arm64
+            goos: linux
+            arch: arm64
+
+            
     steps:
     - uses: actions/checkout@v2
-    - run: echo {}
-    # - name: Set up Go
-    #   uses: actions/setup-go@v3
-    #   with:
-    #     go-version: 1.18
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
 
-    # - name: Build
-    #   run: env GOOS=linux GOARCH=amd64 go build k3dev.go
+    - name: Build
+      run: env GOOS=${{matrix.goos}} GOARCH=${{matrix.arch}} go build k3dev.go
 
-    # - name: Test
-    #   run: go test -v ./...
+    - name: Cache Vagrant boxes
+      uses: actions/cache@v2
+      with:
+        path: ~/.vagrant.d/boxes
+        key: ${{ runner.os }}-vagrant-${{ hashFiles('Vagrantfile') }}
+        restore-keys: |
+          ${{ runner.os }}-vagrant-
 
-    # - name: Cache Vagrant boxes
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ~/.vagrant.d/boxes
-    #     key: ${{ runner.os }}-vagrant-${{ hashFiles('Vagrantfile') }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-vagrant-
-
+    - name: create mount folder
+      run: mkdir .k3dev
+      
     - name: Run vagrant up
       run: env VAGRANT_IMAGE=${{matrix.image}} vagrant up 
+    
+    - name: run app
+      run: vagrant ssh -- -t '/vagrant/k3dev up --domain test.me'
 
-    # - name: run app
-    #   run: vagrant ssh -- -t '/vagrant/k3dev up --domain test.me'
+# curl  https://dash.test.me  --cacert .k3dev/certificates/ca.crt  --resolve dash.test.me:443:192.168.56.10
 
-# curl  https://dash.test.me  --cacert .k3dev/certificates/ca.crt  --resolve 192.168.56.10:443:dash.localtest.me 
 
