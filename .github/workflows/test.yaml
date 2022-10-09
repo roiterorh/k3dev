@@ -14,10 +14,6 @@ jobs:
           - image: bento/ubuntu-20.04
             goos: linux
             arch: amd64
-          - image: ilker/ubuntu2004
-            goos: linux
-            arch: arm64
-
             
     steps:
     - uses: actions/checkout@v2

@@ -262,11 +262,7 @@ func applyManifests(kubeconfig string, wildcard string) {
 		ctx.Fatalf("error: %v", err)
 
 	}
-	// // use the current context in kubeconfig
-	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// if err != nil {
-	//   panic(err.Error())
-	// }
+
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -293,16 +289,6 @@ func applyManifests(kubeconfig string, wildcard string) {
 		}
 	}
 
-	// // utilruntime.Must(imagepolicyv1alpha1.AddToScheme(apply.Scheme))
-
-	// fmt.Println(yamlFile)
-	// fmt.Println(templatedYaml)
-	// You can add other(crd/build-in) resource scheme
-	// utilruntime.Must(imagepolicyv1alpha1.AddToScheme(apply.Scheme))
-	// applyOptions := apply.NewApplyOptions(dynamicClient, discoveryClient)
-	// if err := applyOptions.Apply(context.TODO(), []byte(["templatedYaml"])); err != nil {
-	//   log.Fatalf("apply error: %v", err)
-	// }
 
 }
 
@@ -334,11 +320,6 @@ type: kubernetes.io/tls
 		fmt.Println(err)
 		panic(err.Error())
 	}
-	// // use the current context in kubeconfig
-	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// if err != nil {
-	//   panic(err.Error())
-	// }
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
