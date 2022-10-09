@@ -157,25 +157,11 @@ func healthAPI(kubeconfig string) {
 		"kubeconfig": kubeconfig,
 	})
 
-	var yamlFile []byte
-	var err error
-	retry.Do(
-		func() error {
-			yamlFile, err = ioutil.ReadFile(kubeconfig)
+			yamlFile, err := ioutil.ReadFile(kubeconfig)
 			if err != nil {
-				return err
+				ctx.Fatalf("error reading file",err) 
 			}
-			if len(yamlFile) == 0 {
-				return &RetriableError{
-					Err: err,
-				}
-			}else{
-				ctx.Info(string(yamlFile))
-			}
-
-			return nil
-		},
-	)
+		
 
 	kubeconfigfile := KubeConfigYML{}
 	err = yaml.Unmarshal([]byte(yamlFile), &kubeconfigfile)
@@ -221,6 +207,8 @@ func healthAPI(kubeconfig string) {
 				return &RetriableError{
 					Err: err,
 				}
+			}else{
+				ctx.Debug("API healthy")
 			}
 
 			return nil
@@ -274,11 +262,7 @@ func applyManifests(kubeconfig string, wildcard string) {
 		ctx.Fatalf("error: %v", err)
 
 	}
-	// // use the current context in kubeconfig
-	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// if err != nil {
-	//   panic(err.Error())
-	// }
+
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -305,16 +289,6 @@ func applyManifests(kubeconfig string, wildcard string) {
 		}
 	}
 
-	// // utilruntime.Must(imagepolicyv1alpha1.AddToScheme(apply.Scheme))
-
-	// fmt.Println(yamlFile)
-	// fmt.Println(templatedYaml)
-	// You can add other(crd/build-in) resource scheme
-	// utilruntime.Must(imagepolicyv1alpha1.AddToScheme(apply.Scheme))
-	// applyOptions := apply.NewApplyOptions(dynamicClient, discoveryClient)
-	// if err := applyOptions.Apply(context.TODO(), []byte(["templatedYaml"])); err != nil {
-	//   log.Fatalf("apply error: %v", err)
-	// }
 
 }
 
@@ -346,11 +320,6 @@ type: kubernetes.io/tls
 		fmt.Println(err)
 		panic(err.Error())
 	}
-	// // use the current context in kubeconfig
-	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// if err != nil {
-	//   panic(err.Error())
-	// }
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -367,3 +336,6 @@ type: kubernetes.io/tls
 	}
 
 }
+
+
+
